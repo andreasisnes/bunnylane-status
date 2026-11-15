@@ -16,13 +16,15 @@ async function mockApi(page: Page) {
     }
     await route.fulfill({ json: body })
   })
-  await page.route('**/api/watch**', (route) =>
-    route.fulfill({
+  await page.route('**/api/watch**', (route) => {
+    const line = new URL(route.request().url()).searchParams.get('line') ?? ''
+    const body = line.startsWith('status') ? statusResult : netResult
+    return route.fulfill({
       status: 200,
       headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' },
-      body: `event: result\ndata: ${JSON.stringify(netResult)}\n\nretry: 60000\n\n`,
-    }),
-  )
+      body: `event: result\ndata: ${JSON.stringify(body)}\n\nretry: 60000\n\n`,
+    })
+  })
   await page.route('**/api/ticker', (route) =>
     route.fulfill({
       status: 200,
