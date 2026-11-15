@@ -42,6 +42,9 @@ public sealed class StatusDb(DbContextOptions<StatusDb> options) : DbContext(opt
         b.Entity<WatchTimeDaily>().HasKey(w => new { w.Date, w.UserId });
         b.Entity<VpsBytesDaily>().HasKey(v => new { v.Date, v.UserId });
         b.Entity<SessionLease>().HasKey(l => l.RemoteIp);
+        // SQLite cannot order or compare DateTimeOffset text; store UTC ticks so prune and lease lookups translate.
+        b.Entity<SessionLease>().Property(l => l.SeenUtc)
+            .HasConversion(v => v.UtcTicks, v => new DateTimeOffset(v, TimeSpan.Zero));
     }
 
     public async Task AddWatchTimeAsync(DateOnly day, string userId, string displayName, long seconds, CancellationToken ct)
@@ -68,10 +71,15 @@ public sealed class StatusDb(DbContextOptions<StatusDb> options) : DbContext(opt
         await SaveChangesAsync(ct);
     }
 
-    public async Task PruneAsync(DateOnly today, CancellationToken ct)
+    /// <summary>A lease is only useful for attribution for 10 minutes; an IP is never kept longer than this.</summary>
+    public static readonly TimeSpan LeaseRetention = TimeSpan.FromHours(1);
+
+    public async Task PruneAsync(DateOnly today, DateTimeOffset now, CancellationToken ct)
     {
         var cutoff = today.AddMonths(-RetentionMonths);
         await WatchTime.Where(w => w.Date < cutoff).ExecuteDeleteAsync(ct);
         await VpsBytes.Where(v => v.Date < cutoff).ExecuteDeleteAsync(ct);
+        var leaseCutoff = now - LeaseRetention;
+        await Leases.Where(l => l.SeenUtc < leaseCutoff).ExecuteDeleteAsync(ct);
     }
 }

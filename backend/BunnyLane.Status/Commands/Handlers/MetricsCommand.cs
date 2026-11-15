@@ -28,7 +28,8 @@ public abstract class MetricsCommand(IPrometheus prom, TimeProvider clock) : ICo
     protected CommandResult Unavailable() =>
         CommandResult.Unknown(Name, new TagsBlock([new Tag(Name, Level.Unknown)]), new TextBlock("metrics unavailable right now", Tone.Muted));
 
-    protected static double Single(Instant[] values) => values.Length == 0 ? 0 : values[0].Value;
+    /// <summary>The first sample, or null when the query matched nothing. Callers turn null into <c>[UNKNOWN]</c>, never into 0.</summary>
+    protected static double? Single(Instant[] values) => values.Length == 0 ? null : values[0].Value;
 
     /// <summary>Range windows: the span and the step from the plan (1h→30s, 24h→5m, 7d→30m, 30d→2h).</summary>
     protected static (TimeSpan Span, TimeSpan Step) Window(string arg) => arg switch

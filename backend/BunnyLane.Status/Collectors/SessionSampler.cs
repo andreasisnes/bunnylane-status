@@ -12,6 +12,7 @@ public sealed class SessionSampler(
 {
     public static readonly TimeSpan Interval = TimeSpan.FromSeconds(30);
     private readonly TimeZoneInfo _tz = TimeZoneInfo.FindSystemTimeZoneById(options.Value.TimeZone);
+    private DateTimeOffset _lastPrune = DateTimeOffset.MinValue;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -19,7 +20,7 @@ public sealed class SessionSampler(
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
             await SampleOnceAsync(stoppingToken);
-            if (clock.GetUtcNow().Minute == 0 && clock.GetUtcNow().Second < 30) await PruneAsync(stoppingToken);
+            if (clock.GetUtcNow() - _lastPrune >= TimeSpan.FromHours(1)) await PruneAsync(stoppingToken);
         }
     }
 
@@ -49,7 +50,9 @@ public sealed class SessionSampler(
 
     private async Task PruneAsync(CancellationToken ct)
     {
+        var now = clock.GetUtcNow();
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        await db.PruneAsync(DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(clock.GetUtcNow(), _tz).DateTime), ct);
+        await db.PruneAsync(DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(now, _tz).DateTime), now, ct);
+        _lastPrune = now;
     }
 }

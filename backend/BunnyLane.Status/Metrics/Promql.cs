@@ -11,7 +11,7 @@ public static class Promql
     public const string NodeMem = "1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes";
     public const string NodeLoad = "node_load1";
     public const string NodeUptime = "time() - node_boot_time_seconds";
-    public const string NodeNames = "node_uname_info";
+    public const string NodeNames = "node_uname_info{job!=\"vps\"}";
 
     // network (workers' VLAN interface; WAN is the VPS eth0)
     public const string NetRx = "sum by (instance) (rate(node_network_receive_bytes_total{job!=\"vps\",device=\"eth0\"}[2m])) * 8";
@@ -24,7 +24,7 @@ public static class Promql
     public const string LonghornUsage = "longhorn_node_storage_usage_bytes";
     public const string LonghornVolumeRobustness = "longhorn_volume_robustness";
     public const string LonghornVolumeSize = "longhorn_volume_actual_size_bytes";
-    public const string LonghornDegraded = "count(longhorn_volume_robustness == 2) or vector(0)";
+    public const string LonghornDegraded = "count(longhorn_volume_robustness >= 2) or vector(0)";
     public const string NasUsed = "kubelet_volume_stats_used_bytes{persistentvolumeclaim=\"unifi-nas-media\"}";
     public const string NasCapacity = "kubelet_volume_stats_capacity_bytes{persistentvolumeclaim=\"unifi-nas-media\"}";
 
@@ -32,7 +32,8 @@ public static class Promql
     public const string GpuBusy = "node_drm_gpu_busy_percent";
     public const string GpuVramUsed = "node_drm_memory_vram_used_bytes";
     public const string GpuVramSize = "node_drm_memory_vram_size_bytes";
-    public const string GpuTemp = "node_hwmon_temp_celsius{chip=~\".*amdgpu.*\"}";
+    // hwmon's chip label is a PCI path; the driver name is only in the info metric, hence the join. One value per node.
+    public const string GpuTemp = "max by (instance) (node_hwmon_temp_celsius * on (instance, chip) group_left() node_hwmon_chip_names{chip_name=\"amdgpu\"})";
 
     // vps monthly counters (raw, so callers can sum positive deltas and tolerate resets)
     public const string VpsRx = "node_network_receive_bytes_total{job=\"vps\",device=\"eth0\"}";

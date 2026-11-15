@@ -103,4 +103,34 @@ public sealed class WatchStreamTests
         tick.RootElement.GetProperty("streams").GetInt32().Should().Be(1);
         tick.RootElement.TryGetProperty("vpsUsedBytes", out _).Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Ticker_is_computed_once_and_shared_by_every_client()
+    {
+        using var factory = new ApiFactory();
+        var client = factory.CreateClient();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+
+        var responses = new List<HttpResponseMessage>();
+        for (var i = 0; i < 3; i++) responses.Add(await Open(client, "/api/ticker", cts.Token));
+        foreach (var r in responses) (await ApiFactory.ReadEventsAsync(await r.Content.ReadAsStreamAsync(cts.Token), 1, cts.Token)).Should().ContainSingle();
+
+        factory.Prom.RangeCalls.Should().HaveCount(2, "one computation (rx + tx) serves all clients");
+        responses.ForEach(r => r.Dispose());
+    }
+
+    [Fact]
+    public async Task Ticker_does_not_consume_the_watch_stream_budget()
+    {
+        using var factory = new ApiFactory();
+        var client = factory.CreateClient();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var open = new List<HttpResponseMessage>();
+        for (var i = 0; i < 4; i++) open.Add(await Open(client, "/api/watch?line=help", cts.Token));
+
+        using var ticker = await Open(client, "/api/ticker", cts.Token);
+
+        ticker.StatusCode.Should().Be(HttpStatusCode.OK);
+        open.ForEach(r => r.Dispose());
+    }
 }

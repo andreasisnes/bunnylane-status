@@ -10,7 +10,9 @@ public sealed class DisksCommand(IPrometheus prom, TimeProvider? clock = null) :
     protected override async Task<CommandResult> RunCoreAsync(IReadOnlyList<string> args, CancellationToken ct)
     {
         var map = await NodeMap.LoadAsync(Prom, ct);
-        var capacity = map.ByHost(await Prom.QueryAsync(Promql.LonghornCapacity, ct));
+        var capacityRaw = await Prom.QueryAsync(Promql.LonghornCapacity, ct);
+        if (capacityRaw.Length == 0) return Unavailable();
+        var capacity = map.ByHost(capacityRaw);
         var usage = map.ByHost(await Prom.QueryAsync(Promql.LonghornUsage, ct));
         var robustness = await Prom.QueryAsync(Promql.LonghornVolumeRobustness, ct);
 

@@ -1,19 +1,12 @@
 using System.Net.ServerSentEvents;
 using System.Runtime.CompilerServices;
 using BunnyLane.Status.Commands;
-using BunnyLane.Status.Jellyfin;
-using BunnyLane.Status.Metrics;
-using BunnyLane.Status.Render;
-using Microsoft.Extensions.Options;
 
 namespace BunnyLane.Status.Api;
-
-public sealed record Tick(double? WanInBps, double? WanOutBps, double? VpsUsedBytes, long VpsCapBytes, int? Streams);
 
 public static class StreamEndpoints
 {
     public static readonly TimeSpan WatchInterval = TimeSpan.FromSeconds(2);
-    public static readonly TimeSpan TickerInterval = TimeSpan.FromSeconds(5);
 
     public static IEndpointRouteBuilder MapStreamEndpoints(this IEndpointRouteBuilder app)
     {
@@ -21,9 +14,9 @@ public static class StreamEndpoints
             TypedResults.ServerSentEvents(Watch(line ?? "", runner, clock, ct)))
             .RequireRateLimiting(RateLimit.Streams);
 
-        app.MapGet("/api/ticker", (IPrometheus prom, IJellyfin jellyfin, IOptions<StatusOptions> options, TimeProvider clock, CancellationToken ct) =>
-            TypedResults.ServerSentEvents(Ticker(prom, jellyfin, options.Value, clock, ct)))
-            .RequireRateLimiting(RateLimit.Streams);
+        app.MapGet("/api/ticker", (TickerService ticker, CancellationToken ct) =>
+            TypedResults.ServerSentEvents(Ticks(ticker, ct)))
+            .RequireRateLimiting(RateLimit.Ticker);
         return app;
     }
 
@@ -48,30 +41,8 @@ public static class StreamEndpoints
         }
     }
 
-    private static async IAsyncEnumerable<SseItem<Tick>> Ticker(IPrometheus prom, IJellyfin jellyfin, StatusOptions options, TimeProvider clock, [EnumeratorCancellation] CancellationToken ct)
+    private static async IAsyncEnumerable<SseItem<Tick>> Ticks(TickerService ticker, [EnumeratorCancellation] CancellationToken ct)
     {
-        var usage = new VpsUsage(prom);
-        var tz = TimeZoneInfo.FindSystemTimeZoneById(options.TimeZone);
-        while (!ct.IsCancellationRequested)
-        {
-            double? wanIn = null, wanOut = null, used = null;
-            int? streams = null;
-            try
-            {
-                wanIn = (await prom.QueryAsync(Promql.WanRx, ct)).FirstOrDefault()?.Value;
-                wanOut = (await prom.QueryAsync(Promql.WanTx, ct)).FirstOrDefault()?.Value;
-                var now = clock.GetUtcNow();
-                used = (await usage.ForAsync(Months.Current(now, tz), now, ct)).Total;
-            }
-            catch (MetricsUnavailableException) { }
-            try
-            {
-                streams = (await jellyfin.GetSessionsAsync(ct)).Count(s => s.IsPlaying);
-            }
-            catch (JellyfinUnavailableException) { }
-
-            yield return new SseItem<Tick>(new Tick(wanIn, wanOut, used, options.VpsCapBytes, streams), "tick");
-            await Task.Delay(TickerInterval, clock, ct);
-        }
+        await foreach (var tick in ticker.SubscribeAsync(ct)) yield return new SseItem<Tick>(tick, "tick");
     }
 }

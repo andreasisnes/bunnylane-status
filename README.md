@@ -61,7 +61,7 @@ cd frontend && npx playwright test          # needs a browser; or run in mcr.mic
 docker build -t bunnylane-status:dev . && docker run --rm -p 8080:8080 -e STATUS__PrometheusUrl=http://host.docker.internal:9090 bunnylane-status:dev
 ```
 
-For local UI work run `dotnet run --project backend/BunnyLane.Status` and `npm run dev` in `frontend`; Vite proxies `/api` to port 5000.
+For local UI work run `dotnet run --project backend/BunnyLane.Status` and `npm run dev` in `frontend`; Vite proxies `/api` to port 5090 (the backend's `launchSettings.json`).
 
 ## Release and deployment
 

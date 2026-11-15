@@ -1,4 +1,6 @@
 using BunnyLane.Status.Collectors;
+using BunnyLane.Status.Data;
+using Microsoft.EntityFrameworkCore;
 using BunnyLane.Status.Jellyfin;
 using BunnyLane.Status.Tests.Commands.Handlers;
 using BunnyLane.Status.Tests.Data;
@@ -58,7 +60,30 @@ public sealed class SessionSamplerTests : IDisposable
         follower.Unparsable.Should().Be(1);
     }
 
+    [Fact]
+    public async Task Log_follower_filters_before_touching_the_database_and_writes_in_one_batch()
+    {
+        await Sampler(new Session("u1", "anna", "84.212.10.5", true, 8_000_000, true)).SampleOnceAsync(CancellationToken.None);
+        var counting = new CountingDbFactory(_db);
+        var lines = new List<string>();
+        for (var i = 0; i < 200; i++) lines.Add($$$"""{"ClientAddr":"192.168.30.{{{i % 50}}}:1","DownstreamContentSize":9999,"RequestHost":"jellyfin.bunnylane.no","time":"2026-11-15T21:00:03+01:00"}""");
+        for (var i = 0; i < 50; i++) lines.Add("""{"ClientAddr":"84.212.10.5:1","DownstreamContentSize":10,"RequestHost":"jellyfin.bunnylane.no","time":"2026-11-15T21:00:01+01:00"}""");
+        var follower = new TraefikLogFollower(new FakeLogSource(lines.ToArray()), counting, Options.Create(new StatusOptions()), new FixedClock(Now), NullLogger<TraefikLogFollower>.Instance);
+
+        await follower.FollowOnceAsync(CancellationToken.None);
+
+        counting.Created.Should().BeLessThanOrEqualTo(1, "LAN lines never reach the database and credits are flushed together");
+        await using var db = _db.CreateDbContext();
+        db.VpsBytes.Single(v => v.UserId == "u1").Bytes.Should().Be(500);
+    }
+
     public void Dispose() => _db.Dispose();
+}
+
+public sealed class CountingDbFactory(IDbContextFactory<StatusDb> inner) : IDbContextFactory<StatusDb>
+{
+    public int Created { get; private set; }
+    public StatusDb CreateDbContext() { Created++; return inner.CreateDbContext(); }
 }
 
 public sealed class FakeLogSource(params string[] lines) : ILogSource

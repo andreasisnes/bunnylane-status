@@ -8,6 +8,7 @@ using BunnyLane.Status.Jellyfin;
 using BunnyLane.Status.Metrics;
 using k8s;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, WebRootPath = "wwwroot" });
@@ -20,8 +21,9 @@ services.AddMemoryCache();
 services.AddSingleton<PrometheusHealth>();
 services.AddHttpClient<IPrometheus, PrometheusClient>((sp, http) =>
     http.BaseAddress = new Uri(sp.GetRequiredService<IOptions<StatusOptions>>().Value.PrometheusUrl));
-services.AddHttpClient<IJellyfin, JellyfinClient>((sp, http) =>
+services.AddHttpClient<JellyfinClient>((sp, http) =>
     http.BaseAddress = new Uri(sp.GetRequiredService<IOptions<StatusOptions>>().Value.JellyfinUrl));
+services.AddSingleton<IJellyfin>(sp => new CachedJellyfin(sp.GetRequiredService<JellyfinClient>(), sp.GetRequiredService<IMemoryCache>()));
 services.AddDbContextFactory<StatusDb>((sp, o) =>
     o.UseSqlite($"Data Source={sp.GetRequiredService<IOptions<StatusOptions>>().Value.SqlitePath}"));
 
@@ -54,6 +56,8 @@ services.AddSingleton<ILogSource>(sp =>
         return new NoLogSource();
     }
 });
+services.AddSingleton<TickerService>();
+services.AddHostedService(sp => sp.GetRequiredService<TickerService>());
 services.AddHostedService<SessionSampler>();
 services.AddHostedService<TraefikLogFollower>();
 services.AddStatusRateLimiting();

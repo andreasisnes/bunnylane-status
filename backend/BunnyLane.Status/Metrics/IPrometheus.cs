@@ -6,7 +6,7 @@ public sealed record Instant(IReadOnlyDictionary<string, string> Labels, double 
 public sealed record RangeSeries(IReadOnlyDictionary<string, string> Labels, long[] Timestamps, double?[] Values);
 
 /// <summary>Raised on timeout, transport or HTTP failure. Handlers map it to <c>[UNKNOWN]</c>, never to a 500.</summary>
-public sealed class MetricsUnavailableException(string message, Exception? inner = null) : Exception(message, inner);
+public class MetricsUnavailableException(string message, Exception? inner = null) : Exception(message, inner);
 
 public interface IPrometheus
 {

@@ -26,9 +26,9 @@ public sealed class TopCommand(IDbContextFactory<StatusDb> dbFactory, IOptions<S
 
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var watch = await db.WatchTime.Where(w => w.Date >= from).GroupBy(w => w.UserId)
-            .Select(g => new { UserId = g.Key, Name = g.Max(w => w.DisplayName), Seconds = g.Sum(w => w.Seconds) }).ToListAsync(ct);
+            .Select(g => new { UserId = g.Key, Name = g.Max(w => w.DisplayName) ?? "", Seconds = g.Sum(w => w.Seconds) }).ToListAsync(ct);
         var bytes = await db.VpsBytes.Where(v => v.Date >= from).GroupBy(v => v.UserId)
-            .Select(g => new { UserId = g.Key, Name = g.Max(v => v.DisplayName), Bytes = g.Sum(v => v.Bytes) }).ToListAsync(ct);
+            .Select(g => new { UserId = g.Key, Name = g.Max(v => v.DisplayName) ?? "", Bytes = g.Sum(v => v.Bytes) }).ToListAsync(ct);
 
         var byteMap = bytes.ToDictionary(b => b.UserId, b => b.Bytes);
         var rows = watch

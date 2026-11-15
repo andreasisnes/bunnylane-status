@@ -14,24 +14,24 @@ public sealed class StatusCommand(IPrometheus prom, TimeProvider? clock = null) 
             await Try(ct, async t =>
             {
                 var ready = (await Prom.QueryAsync(Promql.NodeReady, t)).Count(v => v.Value == 1);
-                var total = (int)Single(await Prom.QueryAsync(Promql.NodeCount, t));
+                var total = Single(await Prom.QueryAsync(Promql.NodeCount, t)) is { } n ? (int)n : throw new MetricsUnavailableException("no node count");
                 return new Tag($"nodes {ready}/{total}", ready == total ? Level.Ok : ready == 0 ? Level.Down : Level.Degraded);
             }, "nodes"),
             await Try(ct, async t =>
             {
-                var degraded = Single(await Prom.QueryAsync(Promql.LonghornDegraded, t));
+                var degraded = Single(await Prom.QueryAsync(Promql.LonghornDegraded, t)) ?? throw new MetricsUnavailableException("no longhorn metrics");
                 return new Tag("storage", degraded > 0 ? Level.Degraded : Level.Ok);
             }, "storage"),
             await Try(ct, async t =>
             {
-                var unavailable = Single(await Prom.QueryAsync(Promql.DeploymentsUnavailable, t))
-                                  + Single(await Prom.QueryAsync(Promql.FluxNotReady, t));
+                var unavailable = (Single(await Prom.QueryAsync(Promql.DeploymentsUnavailable, t)) ?? throw new MetricsUnavailableException("no kube-state-metrics"))
+                                  + (Single(await Prom.QueryAsync(Promql.FluxNotReady, t)) ?? 0);
                 return unavailable > 0
                     ? new Tag($"{(int)unavailable} workloads", Level.Degraded)
                     : new Tag("workloads", Level.Ok);
             }, "workloads"),
             await Try(ct, async t =>
-                new Tag("edge", Single(await Prom.QueryAsync(Promql.VpsUp, t)) >= 1 ? Level.Ok : Level.Down), "edge"),
+                new Tag("edge", (Single(await Prom.QueryAsync(Promql.VpsUp, t)) ?? 0) >= 1 ? Level.Ok : Level.Down), "edge"),
         };
 
         var status = tags.Any(t => t.Level == Level.Unknown) ? ResultStatus.Unknown : ResultStatus.Ok;

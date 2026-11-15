@@ -3,8 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { Terminal } from './Terminal'
 
 class FakeEventSource {
+  static CONNECTING = 0
+  static OPEN = 1
+  static CLOSED = 2
   static instances: FakeEventSource[] = []
   url: string
+  readyState = 0
   closed = false
   listeners: Record<string, ((e: MessageEvent) => void)[]> = {}
   onerror: ((e: Event) => void) | null = null
@@ -17,6 +21,9 @@ class FakeEventSource {
   }
   emit(type: string, data: unknown) {
     this.listeners[type]?.forEach((cb) => cb(new MessageEvent(type, { data: JSON.stringify(data) })))
+  }
+  drop() {
+    this.listeners['error']?.forEach((cb) => cb(new Event('error') as MessageEvent))
   }
   close() {
     this.closed = true
@@ -87,4 +94,20 @@ test('Tab completes and Ctrl+L clears', async () => {
 
   await user.keyboard('{Control>}l{/Control}')
   expect(screen.queryByText('this table')).not.toBeInTheDocument()
+})
+
+test('a watch whose connection drops is marked stopped and the prompt is free again', async () => {
+  const user = userEvent.setup()
+  render(<Terminal />)
+  await screen.findByText('this table')
+  const input = screen.getByRole('textbox', { name: 'command' })
+
+  await user.type(input, 'watch net{Enter}')
+  await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+  expect(input).toHaveAttribute('placeholder', expect.stringMatching(/running/))
+
+  FakeEventSource.instances[0].drop()
+
+  expect(await screen.findByRole('article', { name: 'watch net (stopped)' })).toHaveTextContent(/connection/i)
+  expect(input).toHaveAttribute('placeholder', 'type help')
 })

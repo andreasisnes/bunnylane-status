@@ -38,6 +38,12 @@ public static class Attribution
     public static readonly TimeSpan LeaseWindow = TimeSpan.FromMinutes(10);
     private static readonly IPNetwork Tunnel = IPNetwork.Parse("10.200.0.0/24");
 
+    /// <summary>The pure pre-filter: Jellyfin host and a public client. Everything else never reaches the database.</summary>
+    public static bool IsCandidate(TraefikAccessLine line) =>
+        string.Equals(line.RequestHost, JellyfinHost, StringComparison.OrdinalIgnoreCase)
+        && line.DownstreamContentSize > 0
+        && IsPublic(StripPort(line.ClientAddr));
+
     public static Credit? Attribute(TraefikAccessLine line, IReadOnlyList<SessionLease> leases, DateTimeOffset now)
     {
         if (!string.Equals(line.RequestHost, JellyfinHost, StringComparison.OrdinalIgnoreCase)) return null;

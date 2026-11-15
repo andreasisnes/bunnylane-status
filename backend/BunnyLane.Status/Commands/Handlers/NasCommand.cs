@@ -9,8 +9,8 @@ public sealed class NasCommand(IPrometheus prom, TimeProvider? clock = null) : M
 
     protected override async Task<CommandResult> RunCoreAsync(IReadOnlyList<string> args, CancellationToken ct)
     {
-        var used = Single(await Prom.QueryAsync(Promql.NasUsed, ct));
-        var total = Single(await Prom.QueryAsync(Promql.NasCapacity, ct));
+        if (Single(await Prom.QueryAsync(Promql.NasUsed, ct)) is not { } used || Single(await Prom.QueryAsync(Promql.NasCapacity, ct)) is not { } total)
+            return Unavailable();
         var fraction = total > 0 ? used / total : 0;
 
         var to = Clock.GetUtcNow();

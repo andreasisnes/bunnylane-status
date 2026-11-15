@@ -10,8 +10,8 @@ public sealed class NetCommand(IPrometheus prom, TimeProvider? clock = null) : M
     protected override async Task<CommandResult> RunCoreAsync(IReadOnlyList<string> args, CancellationToken ct)
     {
         var window = args.Count > 0 ? args[0] : "1h";
-        var wanIn = Single(await Prom.QueryAsync(Promql.WanRx, ct));
-        var wanOut = Single(await Prom.QueryAsync(Promql.WanTx, ct));
+        if (Single(await Prom.QueryAsync(Promql.WanRx, ct)) is not { } wanIn || Single(await Prom.QueryAsync(Promql.WanTx, ct)) is not { } wanOut)
+            return Unavailable();
         var chart = await ChartAsync($"net {window}", "bit/s", [("in", Promql.WanRx), ("out", Promql.WanTx)], window, ct);
 
         var map = await NodeMap.LoadAsync(Prom, ct);

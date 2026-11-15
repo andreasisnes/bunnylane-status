@@ -21,7 +21,10 @@ public sealed class JellyfinClientTests : IDisposable
           {"Id":"b","UserId":"u2","UserName":"bo","RemoteEndPoint":"192.168.30.50:51234",
            "NowPlayingItem":{"Name":"Secret Show","MediaSources":[{"Bitrate":30000000}]},
            "PlayState":{"IsPaused":false}},
-          {"Id":"c","UserId":"u3","UserName":"carl","RemoteEndPoint":"10.0.0.9","PlayState":{}}
+          {"Id":"c","UserId":"u3","UserName":"carl","RemoteEndPoint":"10.0.0.9","PlayState":{}},
+          {"Id":"d","UserId":"u4","UserName":"dina","RemoteEndPoint":"84.212.10.6",
+           "NowPlayingItem":{"Name":"Paused Movie","MediaSources":[{"Bitrate":9000000}]},
+           "PlayState":{"IsPaused":true}}
         ]
         """;
 
@@ -40,9 +43,10 @@ public sealed class JellyfinClientTests : IDisposable
 
         var sessions = await Client().GetSessionsAsync(CancellationToken.None);
 
-        sessions.Should().HaveCount(3);
+        sessions.Should().HaveCount(4);
         var playing = sessions.Where(s => s.IsPlaying).ToList();
-        playing.Should().HaveCount(2);
+        playing.Should().HaveCount(2, "a paused session is not watching");
+        sessions[3].IsPlaying.Should().BeFalse();
         playing[0].Should().Be(new Session("u1", "anna", "84.212.10.5", true, 8_000_000, true));
         playing[1].Should().Be(new Session("u2", "bo", "192.168.30.50", true, 30_000_000, false));
         sessions[2].IsPlaying.Should().BeFalse();
@@ -54,6 +58,19 @@ public sealed class JellyfinClientTests : IDisposable
         _server.Given(Request.Create().WithPath("/Sessions").UsingGet()).RespondWith(Response.Create().WithStatusCode(401));
 
         await Client().Invoking(c => c.GetSessionsAsync(CancellationToken.None)).Should().ThrowAsync<JellyfinUnavailableException>();
+    }
+
+    [Fact]
+    public async Task Cached_client_asks_jellyfin_once_within_the_window()
+    {
+        _server.Given(Request.Create().WithPath("/Sessions").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBody(SessionsBody));
+        var cached = new CachedJellyfin(Client(), new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()));
+
+        await cached.GetSessionsAsync(CancellationToken.None);
+        await cached.GetSessionsAsync(CancellationToken.None);
+
+        _server.LogEntries.Should().HaveCount(1);
     }
 
     public void Dispose() => _server.Stop();

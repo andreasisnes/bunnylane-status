@@ -23,10 +23,24 @@ function canvasAvailable() {
 export function ChartBlock({ title, unit, timestamps, series }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const plot = useRef<uPlot | null>(null)
+  const shape = useRef<string>('')
+  const raf = useRef<number | null>(null)
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
+  // Build once per series shape (names + unit); later ticks only push data, so `watch` never strobes.
   useEffect(() => {
     if (!host.current || !canvasAvailable() || timestamps.length === 0) return
+    const data: uPlot.AlignedData = [timestamps, ...series.map((s) => s.values)]
+    const nextShape = `${unit}|${series.map((s) => s.name).join(',')}`
+
+    if (plot.current && shape.current === nextShape) {
+      plot.current.setData(data)
+      return
+    }
+
+    plot.current?.destroy()
+    if (raf.current !== null) cancelAnimationFrame(raf.current)
+    shape.current = nextShape
     const width = host.current.clientWidth || 640
     const opts: uPlot.Options = {
       width,
@@ -50,27 +64,34 @@ export function ChartBlock({ title, unit, timestamps, series }: Props) {
         })),
       ],
     }
-    const data: uPlot.AlignedData = [timestamps, ...series.map((s) => s.values)]
     plot.current = new uPlot(opts, data, host.current)
     if (!reduced) {
-      // draw-in: reveal from left to right over ~600 ms
+      // draw-in on first paint only: reveal left to right over ~600 ms
       const start = performance.now()
       const total = timestamps.length
       const step = (t: number) => {
         const f = Math.min(1, (t - start) / 600)
         plot.current?.setData([timestamps, ...series.map((s) => s.values.map((v, i) => (i <= f * total ? v : null)))])
-        if (f < 1) requestAnimationFrame(step)
+        raf.current = f < 1 ? requestAnimationFrame(step) : null
       }
-      requestAnimationFrame(step)
-    }
-    const ro = new ResizeObserver(() => plot.current?.setSize({ width: host.current?.clientWidth || width, height: 320 }))
-    ro.observe(host.current)
-    return () => {
-      ro.disconnect()
-      plot.current?.destroy()
-      plot.current = null
+      raf.current = requestAnimationFrame(step)
     }
   }, [timestamps, series, unit, reduced])
+
+  // Resize with the panel; destroy on unmount.
+  useEffect(() => {
+    if (!host.current || typeof ResizeObserver === 'undefined') return
+    const el = host.current
+    const ro = new ResizeObserver(() => plot.current?.setSize({ width: el.clientWidth || 640, height: 320 }))
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+      if (raf.current !== null) cancelAnimationFrame(raf.current)
+      plot.current?.destroy()
+      plot.current = null
+      shape.current = ''
+    }
+  }, [])
 
   const summary = series.map((s) => {
     const last = [...s.values].reverse().find((v) => v !== null)

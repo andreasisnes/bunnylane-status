@@ -69,9 +69,11 @@ spec:
               path: /healthz
               port: http
             periodSeconds: 20
+          # /healthz, not /readyz: the app degrades to [UNKNOWN] when Prometheus is away and must stay reachable
+          # to say so. /readyz is an operator signal only (and nothing warms it without traffic).
           readinessProbe:
             httpGet:
-              path: /readyz
+              path: /healthz
               port: http
             periodSeconds: 10
             failureThreshold: 3

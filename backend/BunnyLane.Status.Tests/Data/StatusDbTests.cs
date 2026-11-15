@@ -24,7 +24,7 @@ public sealed class StatusDbTests : IDisposable
 
         await using (var db = _db.CreateDbContext())
         {
-            await db.PruneAsync(today, CancellationToken.None);
+            await db.PruneAsync(today, DateTimeOffset.UtcNow, CancellationToken.None);
         }
 
         await using var check = _db.CreateDbContext();
@@ -47,6 +47,27 @@ public sealed class StatusDbTests : IDisposable
         await using var check = _db.CreateDbContext();
         check.WatchTime.Single().Seconds.Should().Be(60);
         check.VpsBytes.Single().Bytes.Should().Be(1500);
+    }
+
+    [Fact]
+    public async Task Prune_forgets_leases_older_than_an_hour()
+    {
+        var now = DateTimeOffset.Parse("2026-11-15T20:00:00Z");
+        await using (var db = _db.CreateDbContext())
+        {
+            db.Leases.AddRange(
+                new SessionLease { RemoteIp = "84.212.10.5", UserId = "u1", DisplayName = "anna", SeenUtc = now.AddMinutes(-5) },
+                new SessionLease { RemoteIp = "84.212.10.6", UserId = "u2", DisplayName = "bo", SeenUtc = now.AddHours(-2) });
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = _db.CreateDbContext())
+        {
+            await db.PruneAsync(new DateOnly(2026, 11, 15), now, CancellationToken.None);
+        }
+
+        await using var check = _db.CreateDbContext();
+        check.Leases.Should().ContainSingle().Which.RemoteIp.Should().Be("84.212.10.5");
     }
 
     public void Dispose() => _db.Dispose();

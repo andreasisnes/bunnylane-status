@@ -33,11 +33,14 @@ public sealed class JellyfinClient(HttpClient http, IOptions<StatusOptions> opti
 
     private static Session Parse(JsonElement s)
     {
-        var playing = s.TryGetProperty("NowPlayingItem", out var item) && item.ValueKind == JsonValueKind.Object;
+        var hasItem = s.TryGetProperty("NowPlayingItem", out var item) && item.ValueKind == JsonValueKind.Object;
+        var paused = s.TryGetProperty("PlayState", out var ps) && ps.ValueKind == JsonValueKind.Object
+                     && ps.TryGetProperty("IsPaused", out var ip) && ip.ValueKind == JsonValueKind.True;
+        var playing = hasItem && !paused;
         var transcoding = s.TryGetProperty("TranscodingInfo", out var tc) && tc.ValueKind == JsonValueKind.Object;
         long bitrate = 0;
         if (transcoding && tc.TryGetProperty("Bitrate", out var tb) && tb.ValueKind == JsonValueKind.Number) bitrate = tb.GetInt64();
-        else if (playing && item.TryGetProperty("MediaSources", out var sources) && sources.ValueKind == JsonValueKind.Array)
+        else if (hasItem && item.TryGetProperty("MediaSources", out var sources) && sources.ValueKind == JsonValueKind.Array)
         {
             var first = sources.EnumerateArray().FirstOrDefault();
             if (first.ValueKind == JsonValueKind.Object && first.TryGetProperty("Bitrate", out var mb) && mb.ValueKind == JsonValueKind.Number) bitrate = mb.GetInt64();

@@ -84,18 +84,34 @@ public sealed class PrometheusClientTests : IDisposable
         _server.Given(Request.Create().WithPath("/api/v1/query_range").UsingGet())
             .RespondWith(Response.Create().WithStatusCode(200).WithBody("""
                 {"status":"success","data":{"resultType":"matrix","result":[
-                  {"metric":{"device":"eth0"},"values":[[1700000000,"10"],[1700000120,"30"]]}]}}
+                  {"metric":{"device":"eth0"},"values":[[1700000040,"10"],[1700000160,"30"]]}]}}
                 """));
-        var from = DateTimeOffset.FromUnixTimeSeconds(1700000000);
-        var to = DateTimeOffset.FromUnixTimeSeconds(1700000120);
+        var from = DateTimeOffset.FromUnixTimeSeconds(1700000040);
+        var to = DateTimeOffset.FromUnixTimeSeconds(1700000160);
 
         var series = await Client().QueryRangeAsync("x", from, to, TimeSpan.FromSeconds(60), CancellationToken.None);
 
         series.Should().ContainSingle();
         series[0].Labels["device"].Should().Be("eth0");
-        series[0].Timestamps.Should().Equal(1700000000, 1700000060, 1700000120);
+        series[0].Timestamps.Should().Equal(1700000040, 1700000100, 1700000160);
         series[0].Values.Should().Equal(10, null, 30);
-        _server.LogEntries.Single().RequestMessage.Query!["step"].Should().Contain("60");
+        _server.LogEntries.Single().RequestMessage.Query!["step"]!.Should().Contain("60");
+    }
+
+    [Fact]
+    public async Task Range_queries_a_few_seconds_apart_share_one_cache_entry()
+    {
+        _server.Given(Request.Create().WithPath("/api/v1/query_range").UsingGet())
+            .RespondWith(Response.Create().WithStatusCode(200).WithBody("""{"status":"success","data":{"resultType":"matrix","result":[]}}"""));
+        var client = Client();
+        var step = TimeSpan.FromSeconds(60);
+        var now = DateTimeOffset.FromUnixTimeSeconds(1699999990); // 10 s into a 60 s bucket; +20 s stays inside it
+
+        await client.QueryRangeAsync("x", now - TimeSpan.FromHours(1), now, step, CancellationToken.None);
+        await client.QueryRangeAsync("x", now.AddSeconds(20) - TimeSpan.FromHours(1), now.AddSeconds(20), step, CancellationToken.None);
+
+        _server.LogEntries.Should().HaveCount(1, "to/from are floored to the step before building the key");
+        _server.LogEntries.Single().RequestMessage.Query!["end"].Should().Contain("1699999980");
     }
 
     [Fact]

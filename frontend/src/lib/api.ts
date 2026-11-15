@@ -31,20 +31,34 @@ export async function fetchCommand(line: string): Promise<CommandResult> {
 
 type Close = () => void
 
-/** Opens an SSE stream; `onError` fires once for a rejected line or a dropped connection. */
+/** Opens an SSE stream; `onError` fires exactly once: for a rejected line (server message) or a lost connection. */
 export function openWatch(line: string, onResult: (r: CommandResult) => void, onError: (message: string) => void): Close {
   const source = new EventSource(url('/api/watch', { line }))
+  let done = false
+  const finish = (message: string) => {
+    if (done) return
+    done = true
+    source.close()
+    onError(message)
+  }
   source.addEventListener('result', (e) => onResult(JSON.parse((e as MessageEvent).data) as CommandResult))
   source.addEventListener('error', (e) => {
-    if ('data' in e && typeof (e as MessageEvent).data === 'string') {
-      const r = JSON.parse((e as MessageEvent).data) as CommandResult
-      onError(r.blocks[0]?.type === 'text' ? r.blocks[0].text : 'command not found: try help')
-    } else if (source.readyState === EventSource.CLOSED) {
-      onError('stream closed')
+    const data = (e as MessageEvent).data
+    if (typeof data === 'string') {
+      try {
+        const r = JSON.parse(data) as CommandResult
+        finish(r.blocks[0]?.type === 'text' ? r.blocks[0].text : 'command not found: try help')
+        return
+      } catch {
+        /* fall through: treat as a transport error */
+      }
     }
-    source.close()
+    finish('connection lost · run it again')
   })
-  return () => source.close()
+  return () => {
+    done = true
+    source.close()
+  }
 }
 
 export function openTicker(onTick: (t: Tick) => void): Close {

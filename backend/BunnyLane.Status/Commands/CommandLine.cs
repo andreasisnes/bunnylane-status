@@ -30,7 +30,7 @@ public static partial class CommandLine
         new("net", "net [1h|24h|7d|30d]", "WAN in/out now, sparkline and a chart for the range", ["1h", "24h", "7d", "30d"]),
         new("disks", "disks", "storage per worker: used/free, volumes, replica health", []),
         new("nas", "nas", "media share: used/total, growth per day", []),
-        new("gpu", "gpu [1h|24h]", "gpu busy, vram, temperature, transcodes now", ["1h", "24h"]),
+        new("gpu", "gpu [1h|24h]", "gpu busy, vram, temperature, chart", ["1h", "24h"]),
         new("vps", "vps [month]", "this month's traffic against the 6 TB cap; 'month' lists the last 6", ["month"]),
         new("top", "top [month|all]", "leaderboard: watch time and vps data per person", ["month", "all"]),
         new("now", "now", "streams playing, total bitrate, gpu in use", []),

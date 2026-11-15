@@ -22,7 +22,7 @@ public static class SecurityHeaders
         services.Configure<ForwardedHeadersOptions>(o =>
         {
             o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-            o.KnownNetworks.Clear();
+            o.KnownIPNetworks.Clear();
             o.KnownProxies.Clear();
             o.KnownIPNetworks.Add(TrustedProxies);
             o.ForwardLimit = 1;

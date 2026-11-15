@@ -70,6 +70,16 @@ public class VpsCommandTests
     }
 
     [Fact]
+    public async Task Vps_without_counter_samples_is_unknown_not_zero()
+    {
+        var p = FakePrometheus.Cluster();
+        p.SetRange(Promql.VpsRx);
+        p.SetRange(Promql.VpsTx);
+
+        (await Cmd(p).RunAsync([], CancellationToken.None)).Status.Should().Be(ResultStatus.Unknown);
+    }
+
+    [Fact]
     public async Task Vps_is_unknown_when_prometheus_is_down() =>
         (await Cmd(new FakePrometheus { Down = true }).RunAsync([], CancellationToken.None)).Status.Should().Be(ResultStatus.Unknown);
 }

@@ -7,8 +7,11 @@ public static class RateLimit
 {
     public const string Commands = "commands";
     public const string Streams = "streams";
+    public const string Ticker = "ticker";
     public const int CommandsPerSecond = 10;
     public const int StreamsPerClient = 4;
+    /// <summary>Every open tab holds one; generous so a household behind one IP is fine.</summary>
+    public const int TickersPerClient = 16;
 
     public static IServiceCollection AddStatusRateLimiting(this IServiceCollection services) =>
         services.AddRateLimiter(o =>
@@ -23,6 +26,11 @@ public static class RateLimit
             o.AddPolicy(Streams, ctx => RateLimitPartition.GetConcurrencyLimiter(ClientKey(ctx), _ => new ConcurrencyLimiterOptions
             {
                 PermitLimit = StreamsPerClient,
+                QueueLimit = 0,
+            }));
+            o.AddPolicy(Ticker, ctx => RateLimitPartition.GetConcurrencyLimiter("t|" + ClientKey(ctx), _ => new ConcurrencyLimiterOptions
+            {
+                PermitLimit = TickersPerClient,
                 QueueLimit = 0,
             }));
         });

@@ -115,6 +115,38 @@ public class ReadOnlyCommandTests
     }
 
     [Fact]
+    public async Task Net_without_wan_counters_is_unknown_not_zero()
+    {
+        var p = FakePrometheus.Cluster().Set(Promql.WanRx).Set(Promql.WanTx);
+
+        (await new NetCommand(p).RunAsync([], CancellationToken.None)).Status.Should().Be(ResultStatus.Unknown);
+    }
+
+    [Fact]
+    public async Task Nas_without_volume_stats_is_unknown_not_zero()
+    {
+        var p = FakePrometheus.Cluster().Set(Promql.NasCapacity);
+
+        (await new NasCommand(p).RunAsync([], CancellationToken.None)).Status.Should().Be(ResultStatus.Unknown);
+    }
+
+    [Fact]
+    public async Task Disks_without_longhorn_metrics_is_unknown_not_zero()
+    {
+        var p = FakePrometheus.Cluster().Set(Promql.LonghornCapacity);
+
+        (await new DisksCommand(p).RunAsync([], CancellationToken.None)).Status.Should().Be(ResultStatus.Unknown);
+    }
+
+    [Fact]
+    public void Queries_match_the_live_metric_shapes()
+    {
+        Promql.LonghornDegraded.Should().Contain(">= 2", "robustness 3 (faulted) is worse than degraded");
+        Promql.GpuTemp.Should().Contain("node_hwmon_chip_names").And.Contain("amdgpu", "the hwmon chip label is a PCI path; the driver name lives in the info metric");
+        Promql.NodeNames.Should().Contain("job!=\"vps\"", "the VPS node_exporter must not become a seventh node");
+    }
+
+    [Fact]
     public async Task Gpu_without_drm_metrics_is_unknown()
     {
         var p = FakePrometheus.Cluster().Set(Promql.GpuBusy);

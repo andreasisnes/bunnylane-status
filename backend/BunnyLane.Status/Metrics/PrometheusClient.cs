@@ -18,9 +18,11 @@ public sealed class PrometheusClient(HttpClient http, IMemoryCache cache, IOptio
 
     public Task<RangeSeries[]> QueryRangeAsync(string promql, DateTimeOffset from, DateTimeOffset to, TimeSpan step, CancellationToken ct)
     {
-        var start = from.ToUnixTimeSeconds();
-        var end = to.ToUnixTimeSeconds();
+        // Floor both bounds to the step so a query repeated a few seconds later hits the same cache entry
+        // and the same Prometheus buckets; otherwise every `watch` tick is a cache miss.
         var stepSeconds = Math.Max(1, (long)step.TotalSeconds);
+        var start = from.ToUnixTimeSeconds() / stepSeconds * stepSeconds;
+        var end = to.ToUnixTimeSeconds() / stepSeconds * stepSeconds;
         var grid = Grid(start, end, stepSeconds);
         return Cached($"r|{promql}|{start}|{end}|{stepSeconds}", async token =>
         {
