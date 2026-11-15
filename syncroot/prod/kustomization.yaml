@@ -1,0 +1,9 @@
+# Published as oci://ghcr.io/andreasisnes/bunnylane-status/bunnylane-status-syncroot by CI,
+# which pins newTag to the image it just pushed. Flux in the homelab follows the `prod` tag.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+images:
+  - name: ghcr.io/andreasisnes/bunnylane-status
+    newTag: sha-0000000

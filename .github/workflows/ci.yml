@@ -12,6 +12,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
+  SYNCROOT: oci://ghcr.io/${{ github.repository }}/bunnylane-status-syncroot
 
 jobs:
   backend:
@@ -86,3 +87,38 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Publishes syncroot/ as an OCI artifact with the image tag pinned to what the image job just pushed.
+  # Flux in the homelab follows the `prod` tag (OCIRepository), so image and manifests move together.
+  syncroot:
+    needs: [image]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fluxcd/flux2/action@main
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "image=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=sha-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Pin the image tag in the prod overlay
+        run: yq -i '.images[0].newTag = "${{ steps.tag.outputs.image }}"' syncroot/prod/kustomization.yaml
+      - name: Validate
+        run: kubectl kustomize syncroot/prod > /dev/null
+      - name: Push manifests
+        run: |
+          flux push artifact "$SYNCROOT:${{ steps.tag.outputs.image }}" \
+            --path=./syncroot \
+            --source="${{ github.server_url }}/${{ github.repository }}" \
+            --revision="${{ github.ref_name }}@sha1:${{ github.sha }}" \
+            --annotations="org.opencontainers.image.description=Kubernetes manifests for bunnylane-status"
+      - name: Tag prod
+        run: flux tag artifact "$SYNCROOT:${{ steps.tag.outputs.image }}" --tag prod

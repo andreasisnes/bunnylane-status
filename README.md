@@ -63,6 +63,13 @@ docker build -t bunnylane-status:dev . && docker run --rm -p 8080:8080 -e STATUS
 
 For local UI work run `dotnet run --project backend/BunnyLane.Status` and `npm run dev` in `frontend`; Vite proxies `/api` to port 5000.
 
-## Release
+## Release and deployment
 
-Conventional Commits. Pushes to `main` publish `:sha-<short>`; a `vX.Y.Z` tag publishes `:vX.Y.Z` and `:latest`. The homelab pins the tag under `images:` so Renovate tracks it.
+Conventional Commits. Every push to `main` (and every `vX.Y.Z` tag) publishes two artifacts to GHCR:
+
+- the container image `ghcr.io/andreasisnes/bunnylane-status:sha-<short>` (tags also get `:vX.Y.Z` and `:latest`);
+- the Kubernetes manifests in `syncroot/` as `oci://ghcr.io/andreasisnes/bunnylane-status/bunnylane-status-syncroot`, with `syncroot/prod` pinned to that image tag, tagged with the same tag and with `prod`.
+
+The homelab repo holds the namespace, the sops-encrypted `status-jellyfin` secret, an `OCIRepository` following the `prod` tag and a Flux `Kustomization` with `path: ./prod`. Merging to `main` here is the deploy. The manifests expect namespace `status`, a `longhorn` storage class, the `letsencrypt-prod` ClusterIssuer, Traefik with its CRDs, and Traefik pods labelled `app.kubernetes.io/name=traefik` in namespace `traefik`.
+
+The GHCR package for the syncroot must be public (or the homelab `OCIRepository` needs a pull secret); set its visibility once after the first push.
