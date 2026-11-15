@@ -102,7 +102,17 @@ body {
 .block-status.status-ok { color: var(--bl-moon); }
 .block-status.status-unknown { color: var(--bl-muted); }
 .block-status.status-error { color: var(--bl-red); }
-.block-streaming .block-status { color: var(--bl-amber); border-color: var(--bl-amber); animation: twinkle 2s ease-in-out infinite; }
+.block-live { color: var(--bl-amber); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; animation: twinkle 2s ease-in-out infinite; }
+.block-live::before { content: '● '; }
+.block-actions { display: flex; gap: 4px; margin-left: 6px; }
+.block-action { font: inherit; font-size: 0.72rem; color: var(--bl-muted); background: transparent; border: 1px solid var(--bl-hair); border-radius: 4px; padding: 1px 7px; cursor: pointer; }
+.block-action:hover { color: var(--bl-amber); border-color: var(--bl-border); }
+.block-args { display: flex; gap: 6px; padding-top: 8px; }
+.arg-chip { font: inherit; font-size: 0.75rem; color: var(--bl-muted); background: transparent; border: 1px solid var(--bl-hair); border-radius: 999px; padding: 1px 10px; cursor: pointer; }
+.arg-chip:hover { color: var(--bl-text); }
+.arg-chip-active { color: var(--bl-amber); border-color: var(--bl-amber); }
+.table-link { font: inherit; color: var(--bl-amber); background: transparent; border: 0; padding: 0; cursor: pointer; text-align: left; }
+.table-link:hover { text-decoration: underline; }
 .block-body { padding-top: 8px; display: grid; gap: 8px; }
 
 /* blocks */
@@ -157,16 +167,17 @@ body {
 }
 .prompt input::placeholder { color: var(--bl-muted); opacity: 0.7; }
 
-.chips { display: none; gap: 8px; padding: 8px 18px 0; flex-wrap: wrap; }
-.chip { font: inherit; font-size: 0.8rem; color: var(--bl-amber); background: transparent; border: 1px solid var(--bl-border); border-radius: 999px; padding: 4px 12px; }
+.chips { display: flex; gap: 8px; padding: 8px 18px 0; flex-wrap: wrap; }
+.chip { font: inherit; font-size: 0.8rem; color: var(--bl-amber); background: transparent; border: 1px solid var(--bl-border); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.chip:hover { background: var(--bl-amber-glow); }
 
 @media (max-width: 640px) {
   .app { padding: 0; }
   .panel { border-radius: 0; border: 0; min-height: 100vh; min-height: 100dvh; }
   .chrome-header { grid-template-columns: 1fr auto; }
   .ticker { grid-column: 1 / -1; justify-content: flex-start; }
-  .chips { display: flex; }
   .block-time { display: none; }
+  .block-header { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {

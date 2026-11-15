@@ -79,7 +79,7 @@ test('watch opens a stream and Ctrl+C closes it', async () => {
   await user.keyboard('{Control>}c{/Control}')
 
   expect(FakeEventSource.instances[0].closed).toBe(true)
-  expect(await screen.findByRole('article', { name: 'watch net (stopped)' })).toBeInTheDocument()
+  expect(await screen.findByRole('article', { name: 'net (stopped)' })).toBeInTheDocument()
 })
 
 test('Tab completes and Ctrl+L clears', async () => {
@@ -108,6 +108,6 @@ test('a watch whose connection drops is marked stopped and the prompt is free ag
 
   FakeEventSource.instances[0].drop()
 
-  expect(await screen.findByRole('article', { name: 'watch net (stopped)' })).toHaveTextContent(/connection/i)
+  expect(await screen.findByRole('article', { name: 'net (stopped)' })).toHaveTextContent(/connection/i)
   expect(input).toHaveAttribute('placeholder', 'type help')
 })
