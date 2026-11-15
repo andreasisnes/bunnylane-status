@@ -1,0 +1,12 @@
+# Leaderboard database. Survives restarts; losing it is acceptable, so no Longhorn backup group.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: status-data
+  namespace: status
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 1Gi

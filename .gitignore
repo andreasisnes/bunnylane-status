@@ -1,0 +1,11 @@
+bin/
+obj/
+node_modules/
+dist/
+wwwroot/
+.superpowers/
+*.user
+.vs/
+test-results/
+playwright-report/
+test-results/

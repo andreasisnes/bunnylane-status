@@ -1,0 +1,14 @@
+# Per visitor IP: plenty for a human typing, not enough to hammer Prometheus through us.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: status-ratelimit
+  namespace: status
+spec:
+  rateLimit:
+    average: 20
+    burst: 40
+    period: 1s
+    sourceCriterion:
+      ipStrategy:
+        depth: 1

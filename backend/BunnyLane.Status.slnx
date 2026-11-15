@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="BunnyLane.Status.Tests/BunnyLane.Status.Tests.csproj" />
+  <Project Path="BunnyLane.Status/BunnyLane.Status.csproj" />
+</Solution>
