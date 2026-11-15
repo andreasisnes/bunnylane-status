@@ -19,4 +19,4 @@ export const COMMANDS: CommandSpec[] = [
 ]
 
 /** Commands that make sense as chips on a phone. */
-export const CHIPS = ['status', 'net', 'vps', 'top']
+export const CHIPS = ['status', 'nodes', 'net', 'disks', 'nas', 'gpu', 'vps', 'top', 'now']

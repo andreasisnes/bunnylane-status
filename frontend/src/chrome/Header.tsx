@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { moonPhase } from '../lib/moon'
+import { hhmm } from '../lib/time'
 import { Ticker } from './Ticker'
 
 
@@ -20,7 +21,7 @@ export function Header() {
         <span className="moon" aria-hidden="true">
           {moonPhase(now)}
         </span>
-        <time dateTime={now.toISOString()}>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+        <time dateTime={now.toISOString()}>{hhmm(now)}</time>
       </div>
     </header>
   )

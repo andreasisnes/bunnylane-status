@@ -19,7 +19,7 @@ export const statusResult: CommandResult = {
 export const helpResult: CommandResult = {
   command: 'help',
   status: 'ok',
-  blocks: [{ type: 'table', columns: ['command', 'output'], rows: [['help', 'this table']] }],
+  blocks: [{ type: 'table', columns: ['command', 'output'], rows: [['help', 'this table'], ['status', 'one line per area'], ['net [1h|24h|7d|30d]', 'wan chart']] }],
 }
 
 export const handlers = [

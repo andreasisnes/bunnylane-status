@@ -7,14 +7,14 @@ import { TagsBlock } from './TagsBlock'
 import { TextBlock } from './TextBlock'
 
 /** Dispatches one server block to its renderer. The set is closed; anything else is ignored. */
-export function BlockBody({ block }: { block: Block }) {
+export function BlockBody({ block, onPick }: { block: Block; onPick?: (command: string) => void }) {
   switch (block.type) {
     case 'text':
       return <TextBlock text={block.text} tone={block.tone} />
     case 'tags':
       return <TagsBlock tags={block.tags} />
     case 'table':
-      return <TableBlock columns={block.columns} rows={block.rows} />
+      return <TableBlock columns={block.columns} rows={block.rows} onPick={onPick} />
     case 'bar':
       return <BarBlock label={block.label} fraction={block.fraction} caption={block.caption} />
     case 'sparkline':

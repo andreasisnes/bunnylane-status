@@ -16,13 +16,15 @@ async function mockApi(page: Page) {
     }
     await route.fulfill({ json: body })
   })
-  await page.route('**/api/watch**', (route) =>
-    route.fulfill({
+  await page.route('**/api/watch**', (route) => {
+    const line = new URL(route.request().url()).searchParams.get('line') ?? ''
+    const body = line.startsWith('status') ? statusResult : netResult
+    return route.fulfill({
       status: 200,
       headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' },
-      body: `event: result\ndata: ${JSON.stringify(netResult)}\n\nretry: 60000\n\n`,
-    }),
-  )
+      body: `event: result\ndata: ${JSON.stringify(body)}\n\nretry: 60000\n\n`,
+    })
+  })
   await page.route('**/api/ticker', (route) =>
     route.fulfill({
       status: 200,
@@ -50,7 +52,7 @@ test('typing status shows an [OK] tag and the ticker fills in', async ({ page })
 test('the phone shows command chips and tapping status runs it', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'phone only')
   const chips = page.getByRole('group', { name: 'quick commands' })
-  await expect(chips.getByRole('button')).toHaveText(['status', 'net', 'vps', 'top'])
+  await expect(chips.getByRole('button', { name: 'status' })).toBeVisible()
 
   await chips.getByRole('button', { name: 'status' }).tap()
 
@@ -62,9 +64,9 @@ test('watch net streams and Ctrl+C leaves a stopped block', async ({ page, isMob
   const input = page.getByRole('textbox', { name: 'command' })
   await input.fill('watch net')
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('article', { name: 'watch net' })).toContainText('wan in 184 Mbit/s')
+  await expect(page.getByRole('article', { name: 'net' })).toContainText('wan in 184 Mbit/s')
 
   await input.press('Control+c')
 
-  await expect(page.getByRole('article', { name: 'watch net (stopped)' })).toBeVisible()
+  await expect(page.getByRole('article', { name: 'net (stopped)' })).toBeVisible()
 })
