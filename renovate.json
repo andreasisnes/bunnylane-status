@@ -1,0 +1,8 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits"],
+  "enabledManagers": ["dockerfile", "nuget", "npm", "github-actions"],
+  "packageRules": [
+    { "matchUpdateTypes": ["minor", "patch"], "automerge": true }
+  ]
+}
