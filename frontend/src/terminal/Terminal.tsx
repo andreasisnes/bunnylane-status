@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { fetchCommand, openWatch } from '../lib/api'
-import { COMMANDS } from '../lib/commands'
+import { CHIPS, COMMANDS } from '../lib/commands'
 import type { Block as RenderBlock, Tone } from '../lib/types'
 import { Block, type TerminalBlock } from './Block'
 import { complete } from './completion'
@@ -179,6 +179,13 @@ export function Terminal({ initialLine }: { initialLine?: string } = {}) {
           <Block key={b.id} block={b} />
         ))}
         <div ref={bottomRef} />
+      </div>
+      <div className="chips" role="group" aria-label="quick commands">
+        {CHIPS.map((c) => (
+          <button key={c} type="button" className="chip" onClick={() => void run(c)}>
+            {c}
+          </button>
+        ))}
       </div>
       <Prompt ref={inputRef} value={input} onChange={(v) => { setInput(v); setHint([]) }} onKeyDown={onKeyDown} hint={hint} busy={watchId.current !== null} />
     </section>
