@@ -6,15 +6,27 @@ function url(path: string, params?: Record<string, string>) {
   return u.toString()
 }
 
+const offline = (line: string): CommandResult => ({ command: line, status: 'unknown', blocks: [{ type: 'text', text: 'the status service is not answering', tone: 'muted' }] })
+
+/** Never throws: network trouble becomes an [UNKNOWN] result the terminal can show. */
 export async function fetchCommand(line: string): Promise<CommandResult> {
-  const response = await fetch(url('/api/command'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ line }),
-  })
+  let response: Response
+  try {
+    response = await fetch(url('/api/command'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ line }),
+    })
+  } catch {
+    return offline(line)
+  }
   if (response.status === 429) return { command: line, status: 'error', blocks: [{ type: 'text', text: 'slow down a little', tone: 'muted' }] }
-  if (!response.ok) return { command: line, status: 'unknown', blocks: [{ type: 'text', text: 'the status service is not answering', tone: 'muted' }] }
-  return (await response.json()) as CommandResult
+  if (!response.ok) return offline(line)
+  try {
+    return (await response.json()) as CommandResult
+  } catch {
+    return offline(line)
+  }
 }
 
 type Close = () => void
