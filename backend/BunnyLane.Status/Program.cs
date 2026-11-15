@@ -57,6 +57,8 @@ services.AddSingleton<ILogSource>(sp =>
 services.AddHostedService<SessionSampler>();
 services.AddHostedService<TraefikLogFollower>();
 services.AddStatusRateLimiting();
+services.AddStatusForwardedHeaders();
+builder.WebHost.ConfigureKestrel(k => k.Limits.MaxRequestBodySize = 4 * 1024);
 
 var app = builder.Build();
 
@@ -65,6 +67,8 @@ await using (var db = await app.Services.GetRequiredService<IDbContextFactory<St
     await db.Database.EnsureCreatedAsync();
 }
 
+app.UseTrustedForwardedHeaders();
+app.UseSecurityHeaders();
 app.UseRateLimiter();
 app.UseDefaultFiles();
 app.UseStaticFiles();

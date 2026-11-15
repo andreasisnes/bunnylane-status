@@ -16,9 +16,12 @@ RUN dotnet publish BunnyLane.Status/BunnyLane.Status.csproj -c Release -o /app -
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
 WORKDIR /app
-RUN addgroup -S status && adduser -S -G status -u 10001 status
+RUN apk add --no-cache tzdata icu-libs && addgroup -S status && adduser -S -G status -u 10001 status \
+    && mkdir -p /data && chown status:status /data
 COPY --from=backend /app ./
 USER status
-ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_URLS=http://+:8080 \
+    STATUS__SqlitePath=/data/status.db
+VOLUME ["/data"]
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "BunnyLane.Status.dll"]
