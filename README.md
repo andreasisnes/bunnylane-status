@@ -65,11 +65,12 @@ For local UI work run `dotnet run --project backend/BunnyLane.Status` and `npm r
 
 ## Release and deployment
 
-Conventional Commits. Every push to `main` (and every `vX.Y.Z` tag) publishes two artifacts to GHCR:
+Conventional Commits; the release notes are generated from them (`cliff.toml`).
 
-- the container image `ghcr.io/andreasisnes/bunnylane-status:sha-<short>` (tags also get `:vX.Y.Z` and `:latest`);
-- the Kubernetes manifests in `syncroot/` as `oci://ghcr.io/andreasisnes/bunnylane-status/bunnylane-status-syncroot`, with `syncroot/prod` pinned to that image tag, tagged with the same tag and with `prod`.
+1. **CI** (`ci.yml`) runs on every pull request. On a push to `main` it also publishes the image `ghcr.io/andreasisnes/bunnylane-status:<sha>` (and `:latest`) and the manifests in `syncroot/` as the OCI artifact `oci://ghcr.io/andreasisnes/bunnylane-status/bunnylane-status-syncroot:<sha>`, with `syncroot/prod` pinned to that image. Nothing reaches production yet.
+2. **Release** (`release.yml`) runs after a successful CI run on `main`. It deletes any existing draft release and creates a new draft `bunnylane-status YYYY.MM.DD-<sha>` with the changelog since the last published release. There is always at most one draft, for the latest commit.
+3. **CD** (`cd.yml`) runs when a release is published: it tags the image and the manifests artifact with the release tag and with `prod`.
 
-The homelab repo holds the namespace, the sops-encrypted `status-jellyfin` secret, an `OCIRepository` following the `prod` tag and a Flux `Kustomization` with `path: ./prod`. Merging to `main` here is the deploy. The manifests expect namespace `status`, a `longhorn` storage class, the `letsencrypt-prod` ClusterIssuer, Traefik with its CRDs, and Traefik pods labelled `app.kubernetes.io/name=traefik` in namespace `traefik`.
+The homelab repo holds the namespace, the sops-encrypted `status-jellyfin` secret, an `OCIRepository` following `prod` and a Flux `Kustomization` with `path: ./prod`. **Publishing the draft release is the deploy**; Flux picks the new `prod` tag up within 10 minutes.
 
-The GHCR package for the syncroot must be public (or the homelab `OCIRepository` needs a pull secret); set its visibility once after the first push.
+The manifests expect namespace `status`, a `longhorn` storage class, the `letsencrypt-prod` ClusterIssuer, Traefik with its CRDs, and Traefik pods labelled `app.kubernetes.io/name=traefik` in namespace `traefik`. The GHCR package for the syncroot must be public (or the homelab `OCIRepository` needs a pull secret); set its visibility once after the first push.

@@ -1,14 +1,19 @@
 name: ci
 
+# Pull requests: test. Pushes to main: test, then publish the image and the syncroot manifests
+# tagged with the commit SHA. Nothing here reaches prod; the Release and CD workflows do that.
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
 
 permissions:
   contents: read
   packages: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
@@ -37,6 +42,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - run: npm run lint
       - run: npm test
       - run: npm run build
 
@@ -71,28 +77,20 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE }}
-          tags: |
-            type=sha,prefix=sha-,format=short,enable=${{ github.ref == 'refs/heads/main' }}
-            type=ref,event=tag
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
       - uses: docker/build-push-action@v6
         with:
           context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Publishes syncroot/ as an OCI artifact with the image tag pinned to what the image job just pushed.
-  # Flux in the homelab follows the `prod` tag (OCIRepository), so image and manifests move together.
+  # syncroot/ with the image pinned to this commit, published under the same SHA.
   syncroot:
     needs: [image]
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -102,23 +100,14 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: tag
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            echo "image=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          else
-            echo "image=sha-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Pin the image tag in the prod overlay
-        run: yq -i '.images[0].newTag = "${{ steps.tag.outputs.image }}"' syncroot/prod/kustomization.yaml
+      - name: Pin the image to this commit
+        run: yq -i '.images[0].newTag = "${{ github.sha }}"' syncroot/prod/kustomization.yaml
       - name: Validate
         run: kubectl kustomize syncroot/prod > /dev/null
       - name: Push manifests
         run: |
-          flux push artifact "$SYNCROOT:${{ steps.tag.outputs.image }}" \
+          flux push artifact "$SYNCROOT:${{ github.sha }}" \
             --path=./syncroot \
             --source="${{ github.server_url }}/${{ github.repository }}" \
             --revision="${{ github.ref_name }}@sha1:${{ github.sha }}" \
             --annotations="org.opencontainers.image.description=Kubernetes manifests for bunnylane-status"
-      - name: Tag prod
-        run: flux tag artifact "$SYNCROOT:${{ steps.tag.outputs.image }}" --tag prod

@@ -1,0 +1,64 @@
+name: release
+
+# After every successful CI run on main: regenerate the release notes and (re)create ONE draft release
+# titled "bunnylane-status <CalVer>-<sha>". Publishing the draft is what promotes that commit to prod (cd.yml).
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: draft-release
+  cancel-in-progress: true
+
+jobs:
+  draft:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+          fetch-depth: 0
+
+      - uses: kenji-miyake/setup-git-cliff@v1
+
+      - name: Release notes for everything since the last published release
+        run: |
+          git cliff --config cliff.toml --unreleased --strip header -o RELEASE_NOTES.md
+          if [[ ! -s RELEASE_NOTES.md ]]; then echo "No notable changes." > RELEASE_NOTES.md; fi
+          cat RELEASE_NOTES.md
+
+      - name: Tag and title
+        id: version
+        run: |
+          SHORT=$(git rev-parse --short=7 "$SHA")
+          TAG="$(date -u '+%Y.%m.%d')-${SHORT}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "title=bunnylane-status $TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Cancel existing draft releases
+        run: |
+          gh release list --json isDraft,tagName --jq '.[] | select(.isDraft) | .tagName' \
+          | while read -r DRAFT; do
+              echo "deleting draft $DRAFT"
+              gh release delete "$DRAFT" --yes
+              gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$DRAFT" 2>/dev/null || true
+            done
+
+      - name: Create draft release
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --draft \
+            --title "${{ steps.version.outputs.title }}" \
+            --notes-file RELEASE_NOTES.md \
+            --target "$SHA"

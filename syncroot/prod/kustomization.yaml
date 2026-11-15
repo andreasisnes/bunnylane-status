@@ -6,4 +6,4 @@ resources:
   - ../base
 images:
   - name: ghcr.io/andreasisnes/bunnylane-status
-    newTag: sha-0000000
+    newTag: "0000000000000000000000000000000000000000"
