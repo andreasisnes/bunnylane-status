@@ -5,11 +5,9 @@ using Microsoft.Extensions.Options;
 
 namespace BunnyLane.Status.Metrics;
 
-public sealed class PrometheusClient(HttpClient http, IMemoryCache cache, IOptions<StatusOptions> options, TimeProvider clock) : IPrometheus
+public sealed class PrometheusClient(HttpClient http, IMemoryCache cache, IOptions<StatusOptions> options, PrometheusHealth health) : IPrometheus
 {
     private readonly StatusOptions _options = options.Value;
-
-    public DateTimeOffset? LastSuccess { get; private set; }
 
     public Task<Instant[]> QueryAsync(string promql, CancellationToken ct) =>
         Cached($"q|{promql}", async token =>
@@ -62,7 +60,7 @@ public sealed class PrometheusClient(HttpClient http, IMemoryCache cache, IOptio
             var doc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(timeout.Token), cancellationToken: timeout.Token);
             if (doc.RootElement.GetProperty("status").GetString() != "success")
                 throw new MetricsUnavailableException("prometheus query failed");
-            LastSuccess = clock.GetUtcNow();
+            health.MarkSuccess();
             return doc;
         }
         catch (OperationCanceledException e) when (!ct.IsCancellationRequested)

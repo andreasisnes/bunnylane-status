@@ -17,7 +17,7 @@ public sealed class PrometheusClientTests : IDisposable
     {
         var options = new StatusOptions { PrometheusUrl = _server.Url!, PrometheusTimeout = timeout ?? TimeSpan.FromSeconds(5) };
         var http = new HttpClient { BaseAddress = new Uri(options.PrometheusUrl) };
-        return new PrometheusClient(http, new MemoryCache(new MemoryCacheOptions()), Options.Create(options), TimeProvider.System);
+        return new PrometheusClient(http, new MemoryCache(new MemoryCacheOptions()), Options.Create(options), new PrometheusHealth(TimeProvider.System));
     }
 
     private const string InstantBody = """
