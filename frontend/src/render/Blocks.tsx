@@ -1,50 +1,27 @@
 import type { Block } from '../lib/types'
+import { BarBlock } from './BarBlock'
+import { ChartBlock } from './ChartBlock'
+import { SparklineBlock } from './SparklineBlock'
+import { TableBlock } from './TableBlock'
+import { TagsBlock } from './TagsBlock'
+import { TextBlock } from './TextBlock'
 
-/** Dispatches one block to its renderer. Task 11 replaces these bodies with the real components. */
+/** Dispatches one server block to its renderer. The set is closed; anything else is ignored. */
 export function BlockBody({ block }: { block: Block }) {
   switch (block.type) {
     case 'text':
-      return <p className={`text tone-${block.tone}`}>{block.text}</p>
+      return <TextBlock text={block.text} tone={block.tone} />
     case 'tags':
-      return (
-        <ul className="tags">
-          {block.tags.map((t) => (
-            <li key={t.label} className={`tag tag-${t.level}`}>
-              <span className="tag-level">[{t.level.toUpperCase()}]</span> {t.label}
-            </li>
-          ))}
-        </ul>
-      )
+      return <TagsBlock tags={block.tags} />
     case 'table':
-      return (
-        <table className="table">
-          <thead>
-            <tr>
-              {block.columns.map((c) => (
-                <th key={c}>{c}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {block.rows.map((row, i) => (
-              <tr key={i}>
-                {row.map((cell, j) => (
-                  <td key={j}>{cell}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )
+      return <TableBlock columns={block.columns} rows={block.rows} />
     case 'bar':
-      return (
-        <div className="bar">
-          <span className="bar-label">{block.label}</span> {block.caption}
-        </div>
-      )
+      return <BarBlock label={block.label} fraction={block.fraction} caption={block.caption} />
     case 'sparkline':
-      return <div className="sparkline">{block.label}</div>
+      return <SparklineBlock label={block.label} values={block.values} unit={block.unit} />
     case 'chart':
-      return <div className="chart">{block.title}</div>
+      return <ChartBlock title={block.title} unit={block.unit} timestamps={block.timestamps} series={block.series} />
+    default:
+      return null
   }
 }
