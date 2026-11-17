@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
-import { formatUnit } from '../lib/format'
+import { formatAxis, formatUnit } from '../lib/format'
+import { hhmm } from '../lib/time'
 import type { Series } from '../lib/types'
 
 type Props = { title: string; unit: string; timestamps: number[]; series: Series[] }
@@ -41,7 +42,8 @@ export function ChartBlock({ title, unit, timestamps, series }: Props) {
     plot.current?.destroy()
     if (raf.current !== null) cancelAnimationFrame(raf.current)
     shape.current = nextShape
-    const width = host.current.clientWidth || 640
+    // Measure the real container; before layout clientWidth is 0 and a guessed width overflows the panel.
+    const width = Math.max(240, Math.floor(host.current.getBoundingClientRect().width || host.current.parentElement?.clientWidth || 640))
     const opts: uPlot.Options = {
       width,
       height: 320,
@@ -49,8 +51,21 @@ export function ChartBlock({ title, unit, timestamps, series }: Props) {
       legend: { show: true },
       scales: { x: { time: true }, y: { range: (_u, min, max) => [Math.min(0, min), max <= 0 ? 1 : max * 1.1] } },
       axes: [
-        { stroke: TEXT, grid: { stroke: GRID, dash: [2, 4] }, ticks: { stroke: GRID }, font: '11px "DM Mono", monospace' },
-        { stroke: TEXT, grid: { stroke: GRID, dash: [2, 4] }, ticks: { stroke: GRID }, font: '11px "DM Mono", monospace', size: 72, values: (_u, vals) => vals.map((v) => formatUnit(v, unit)) },
+        {
+          stroke: TEXT, grid: { stroke: GRID, dash: [2, 4] }, ticks: { stroke: GRID }, font: '11px "DM Mono", monospace',
+          // 24-hour clock; add the date when the window spans more than a day
+          values: (_u, splits) => {
+            const span = (timestamps[timestamps.length - 1] ?? 0) - (timestamps[0] ?? 0)
+            return splits.map((t) => {
+              const d = new Date(t * 1000)
+              return span > 86_400 ? `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')} ${hhmm(d)}` : hhmm(d)
+            })
+          },
+        },
+        {
+          stroke: TEXT, grid: { stroke: GRID, dash: [2, 4] }, ticks: { stroke: GRID }, font: '11px "DM Mono", monospace', size: 92, gap: 6,
+          values: (_u, splits) => splits.map((v) => formatAxis(v, unit)),
+        },
       ],
       series: [
         { label: 'time' },
@@ -82,7 +97,10 @@ export function ChartBlock({ title, unit, timestamps, series }: Props) {
   useEffect(() => {
     if (!host.current || typeof ResizeObserver === 'undefined') return
     const el = host.current
-    const ro = new ResizeObserver(() => plot.current?.setSize({ width: el.clientWidth || 640, height: 320 }))
+    const ro = new ResizeObserver(() => {
+      const w = Math.floor(el.getBoundingClientRect().width)
+      if (w > 0 && plot.current && Math.abs(plot.current.width - w) > 1) plot.current.setSize({ width: w, height: 320 })
+    })
     ro.observe(el)
     return () => {
       ro.disconnect()

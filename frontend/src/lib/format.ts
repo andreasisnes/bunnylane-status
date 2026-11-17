@@ -33,3 +33,9 @@ export function formatUnit(value: number, unit: string) {
   if (unit === 'GB') return `${value.toFixed(1)} GB`
   return `${value}`
 }
+
+/** Axis ticks: same unit scaling, no decimals, so the gutter stays narrow. */
+export function formatAxis(value: number, unit: string) {
+  const text = formatUnit(value, unit)
+  return text.replace(/(\d+)\.\d+ /, '$1 ')
+}

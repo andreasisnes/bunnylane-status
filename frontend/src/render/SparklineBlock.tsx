@@ -1,4 +1,5 @@
-import { spark } from '../lib/format'
+import { downsample } from '../lib/downsample'
+import { formatUnit, spark } from '../lib/format'
 
 export function SparklineBlock({ label, values, unit }: { label: string; values: number[]; unit: string }) {
   const last = values.length ? values[values.length - 1] : null
@@ -6,12 +7,10 @@ export function SparklineBlock({ label, values, unit }: { label: string; values:
     <div className="sparkline">
       <span className="sparkline-label">{label}</span>
       <span className="sparkline-glyphs" aria-label={label}>
-        {spark(values)}
+        {spark(downsample(values))}
       </span>
       {last !== null ? (
-        <span className="sparkline-last">
-          {unit === 'GB' ? `${last.toFixed(1)} ${unit}` : `${Math.round(last)} ${unit}`}
-        </span>
+        <span className="sparkline-last">{formatUnit(last, unit)}</span>
       ) : null}
     </div>
   )
