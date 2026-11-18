@@ -176,7 +176,7 @@ public class ReadOnlyCommandTests
         table.Levels!.Should().HaveCount(table.Rows.Length);
         table.Levels![0][2].Should().Be(Level.Ok);        // cp-1 cpu 10%
         table.Levels![0][3].Should().Be(Level.Ok);        // cp-1 memory 50%
-        table.Levels![5][2].Should().Be(Level.Degraded);  // w-3 cpu 60% is the inclusive lower bound
+        table.Levels![5][2].Should().Be(Level.Degraded);  // w-3 cpu reads 60% (the exact boundary is pinned in ThresholdsTests)
         table.Levels!.Should().OnlyContain(r => r[0] == null && r[1] == null && r[4] == null && r[5] == null,
             "node, role, load and uptime are not fractions of a capacity");
     }

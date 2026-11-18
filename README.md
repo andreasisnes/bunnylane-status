@@ -23,6 +23,23 @@ Design and plans live in the homelab repo: `docs/design/2026-11-15-status-termin
 
 Anything else returns `command not found`.
 
+## Colour thresholds
+
+Every utilisation percentage is coloured by the band the server computes
+(`Render/Thresholds.cs`). The band is decided from the **displayed** whole
+percentage, so the colour never contradicts the number beside it.
+
+| Reads | Level | Colour |
+| --- | --- | --- |
+| under `60%` | ok | moon blue |
+| `60%`-`80%` | degraded | amber |
+| `81%` and above | down | red |
+
+Applies to node CPU and memory, GPU busy and VRAM, Longhorn used, NAS used, and
+VPS month-to-date against the cap. It does **not** apply to load average, uptime,
+bitrates, stream counts or watch time: those are not fractions of a capacity.
+Health tags (`[OK]`, `[DEGRADED]`) keep their own colours and are not part of this scale.
+
 ## Layout
 
 - `backend/` .NET 10 minimal API: allow-list parser, Prometheus and Jellyfin clients, SSE streams, leaderboard collectors (Jellyfin session sampler, Traefik access-log follower), SQLite via EF Core. Serves the built frontend from `wwwroot`.

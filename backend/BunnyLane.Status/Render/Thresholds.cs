@@ -6,13 +6,17 @@ namespace BunnyLane.Status.Render;
 /// </summary>
 public static class Thresholds
 {
-    /// <summary>Lower bounds are inclusive: 0.60 is <see cref="Level.Degraded"/>, 0.80 still is, 0.801 is <see cref="Level.Down"/>.</summary>
+    /// <summary>
+    /// Bands the <em>displayed</em> whole percentage, not the raw fraction, so the colour always
+    /// agrees with the number next to it: under 60% is ok, 60-80% inclusive is degraded, 81% and
+    /// above is down. Banding the raw fraction would let a cell reading "80%" render red.
+    /// </summary>
     public static Level LevelFor(double fraction)
     {
         if (double.IsNaN(fraction)) return Level.Unknown;
 
-        var f = Math.Clamp(fraction, 0, 1);
-        if (f < 0.6) return Level.Ok;
-        return f <= 0.8 ? Level.Degraded : Level.Down;
+        var pct = Format.PercentValue(fraction);
+        if (pct < 60) return Level.Ok;
+        return pct <= 80 ? Level.Degraded : Level.Down;
     }
 }
