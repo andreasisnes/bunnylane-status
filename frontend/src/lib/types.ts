@@ -9,7 +9,7 @@ export type Block =
   | { type: 'text'; text: string; tone: Tone }
   | { type: 'tags'; tags: Tag[] }
   | { type: 'table'; columns: string[]; rows: string[][] }
-  | { type: 'bar'; label: string; fraction: number; caption: string }
+  | { type: 'bar'; label: string; fraction: number; caption: string; level?: Level }
   | { type: 'sparkline'; label: string; values: number[]; unit: string }
   | { type: 'chart'; title: string; unit: string; timestamps: number[]; series: Series[] }
 

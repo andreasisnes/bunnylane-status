@@ -16,7 +16,7 @@ export function BlockBody({ block, onPick }: { block: Block; onPick?: (command: 
     case 'table':
       return <TableBlock columns={block.columns} rows={block.rows} onPick={onPick} />
     case 'bar':
-      return <BarBlock label={block.label} fraction={block.fraction} caption={block.caption} />
+      return <BarBlock label={block.label} fraction={block.fraction} caption={block.caption} level={block.level} />
     case 'sparkline':
       return <SparklineBlock label={block.label} values={block.values} unit={block.unit} />
     case 'chart':

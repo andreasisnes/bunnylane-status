@@ -148,7 +148,10 @@ body {
 .bar-caption { color: var(--bl-muted); }
 .bar-track { height: 10px; margin-top: 4px; border-radius: 5px; background: repeating-linear-gradient(90deg, var(--bl-hair) 0 6px, transparent 6px 8px); overflow: hidden; }
 .bar-fill { height: 100%; background: var(--bl-amber); border-radius: 5px; transition: width 600ms ease-out; box-shadow: 0 0 12px var(--bl-amber-glow); }
-.bar-fill.bar-hot { background: var(--bl-red); }
+/* Bands come from the server (Render/Thresholds.cs); the base stays amber so an unlevelled bar is unchanged. */
+.bar-fill.bar-ok { background: var(--bl-moon); box-shadow: 0 0 12px color-mix(in srgb, var(--bl-moon) 22%, transparent); }
+.bar-fill.bar-warn { background: var(--bl-amber); box-shadow: 0 0 12px color-mix(in srgb, var(--bl-amber) 22%, transparent); }
+.bar-fill.bar-hot { background: var(--bl-red); box-shadow: 0 0 12px color-mix(in srgb, var(--bl-red) 22%, transparent); }
 
 .sparkline { display: flex; gap: 12px; align-items: baseline; min-width: 0; }
 .sparkline-label { color: var(--bl-muted); }
