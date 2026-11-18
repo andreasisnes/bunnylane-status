@@ -20,8 +20,15 @@ public static class Format
         return $"{(int)span.TotalMinutes}m";
     }
 
+    /// <summary>
+    /// The whole percentage the page actually prints. Shared with <see cref="Thresholds.LevelFor"/>
+    /// so a colour band can never contradict the number printed beside it.
+    /// </summary>
+    public static double PercentValue(double fraction) =>
+        Math.Round(Math.Clamp(fraction, 0, 1) * 100, MidpointRounding.AwayFromZero);
+
     public static string Percent(double fraction) =>
-        $"{Math.Round(Math.Clamp(fraction, 0, 1) * 100, MidpointRounding.AwayFromZero).ToString(CultureInfo.InvariantCulture)}%";
+        $"{PercentValue(fraction).ToString(CultureInfo.InvariantCulture)}%";
 
     public static string Bar(double fraction, int width = 24)
     {

@@ -45,4 +45,21 @@ public class BlocksTests
         JsonSerializer.Serialize(new Tag("x", Level.Unknown), Json).Should().Contain("\"level\":\"unknown\"");
         JsonSerializer.Serialize(new CommandResult("x", [], ResultStatus.Unknown), Json).Should().Contain("\"status\":\"unknown\"");
     }
+
+    [Fact]
+    public void A_bar_without_a_level_omits_the_property() =>
+        JsonSerializer.Serialize<Block>(new BarBlock("nas", 0.39, "2.34 / 6.00 TB"), Json).Should().NotContain("\"level\"");
+
+    [Fact]
+    public void A_bar_with_a_level_serialises_it_lower_case() =>
+        JsonSerializer.Serialize<Block>(new BarBlock("nas", 0.85, "x", Level.Down), Json).Should().Contain("\"level\":\"down\"");
+
+    [Fact]
+    public void A_table_without_levels_omits_the_property() =>
+        JsonSerializer.Serialize<Block>(new TableBlock(["a"], [["1"]]), Json).Should().NotContain("\"levels\"");
+
+    [Fact]
+    public void A_table_with_levels_serialises_nulls_and_bands() =>
+        JsonSerializer.Serialize<Block>(new TableBlock(["node", "cpu"], [["w-1", "63%"]], [[null, Level.Degraded]]), Json)
+            .Should().Contain("\"levels\":[[null,\"degraded\"]]");
 }

@@ -29,7 +29,7 @@ public sealed class VpsCommand(IPrometheus prom, IOptions<StatusOptions> options
         var projected = Months.Project(usage.Total, month.Start, month.End, now);
 
         return CommandResult.Ok(Name,
-            new BarBlock($"vps {month.Label}", Math.Clamp(usage.Total / cap, 0, 1), $"{Format.Bytes(usage.Total)} of {Format.Bytes(cap)} · {Format.Percent(usage.Total / cap)}"),
+            new BarBlock($"vps {month.Label}", Math.Clamp(usage.Total / cap, 0, 1), $"{Format.Bytes(usage.Total)} of {Format.Bytes(cap)} · {Format.Percent(usage.Total / cap)}", Thresholds.LevelFor(usage.Total / cap)),
             new TextBlock($"in {Format.Bytes(usage.InBytes)} · out {Format.Bytes(usage.OutBytes)} · today {Format.Bytes(today)}", Tone.Plain),
             new TextBlock($"projected {Format.Bytes(projected)} at month end · {daysToReset} days to reset", projected > cap ? Tone.Amber : Tone.Muted),
             new SparklineBlock("GB per day", usage.PerDayBytes.Select(b => b / 1e9).ToArray(), "GB"));

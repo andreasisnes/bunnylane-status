@@ -34,10 +34,19 @@ public sealed record Tag(string Label, Level Level);
 
 public sealed record TagsBlock(IReadOnlyList<Tag> Tags) : Block;
 
-public sealed record TableBlock(string[] Columns, string[][] Rows) : Block;
+/// <param name="Levels">Optional, parallel to <paramref name="Rows"/>: a band for cell [r][c], or null to leave it plain.</param>
+public sealed record TableBlock(
+    string[] Columns,
+    string[][] Rows,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Level?[][]? Levels = null) : Block;
 
 /// <param name="Fraction">0..1, already clamped by the producer.</param>
-public sealed record BarBlock(string Label, double Fraction, string Caption) : Block;
+/// <param name="Level">Optional utilisation band from <see cref="Thresholds.LevelFor"/>; null leaves the bar neutral.</param>
+public sealed record BarBlock(
+    string Label,
+    double Fraction,
+    string Caption,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] Level? Level = null) : Block;
 
 public sealed record SparklineBlock(string Label, double[] Values, string Unit) : Block;
 

@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { BarBlock } from './BarBlock'
+import { BlockBody } from './Blocks'
 import { ChartBlock } from './ChartBlock'
 import { SparklineBlock } from './SparklineBlock'
 import { TableBlock } from './TableBlock'
@@ -54,4 +55,51 @@ test('ChartBlock renders a figure with the title and a text summary when canvas 
   expect(figure).toHaveTextContent('in')
   expect(figure).toHaveTextContent('out')
   expect(figure).toHaveTextContent('2.00 Mbit/s')
+})
+
+test.each([
+  ['ok', 0.4, 'bar-ok'],
+  ['degraded', 0.7, 'bar-warn'],
+  ['down', 0.85, 'bar-hot'],
+] as const)('a %s bar gets the %s class', (level, fraction, cls) => {
+  render(<BarBlock label="x" fraction={fraction} caption="c" level={level} />)
+  expect(screen.getByRole('meter', { name: 'x' }).querySelector('.bar-fill')).toHaveClass(cls)
+})
+
+test('a bar with no level renders neutral, not hot', () => {
+  render(<BarBlock label="x" fraction={0.95} caption="c" />)
+  const fill = screen.getByRole('meter', { name: 'x' }).querySelector('.bar-fill')!
+  expect(fill).not.toHaveClass('bar-hot')
+  expect(fill).not.toHaveClass('bar-ok')
+  expect(fill).not.toHaveClass('bar-warn')
+})
+
+test('BlockBody passes a bar level through to the renderer', () => {
+  render(<BlockBody block={{ type: 'bar', label: 'nas', fraction: 0.85, caption: 'c', level: 'down' }} />)
+  expect(screen.getByRole('meter', { name: 'nas' }).querySelector('.bar-fill')).toHaveClass('bar-hot')
+})
+
+test('a table colours only the cells with a level', () => {
+  const { container } = render(
+    <TableBlock columns={['node', 'cpu']} rows={[['w-1', '63%']]} levels={[[null, 'degraded']]} />,
+  )
+  const cells = container.querySelectorAll('td')
+  expect(cells[0]).not.toHaveClass('cell-warn')
+  expect(cells[1]).toHaveClass('cell-warn')
+})
+
+test('a short levels array leaves the remaining rows plain', () => {
+  const { container } = render(
+    <TableBlock columns={['node', 'cpu']} rows={[['w-1', '63%'], ['w-2', '12%']]} levels={[[null, 'degraded']]} />,
+  )
+  const bodyRows = container.querySelectorAll('tbody tr')
+  expect(bodyRows).toHaveLength(2)
+  expect(bodyRows[1].querySelectorAll('td')[1]).not.toHaveClass('cell-warn')
+})
+
+test('BlockBody passes table levels through to the renderer', () => {
+  const { container } = render(
+    <BlockBody block={{ type: 'table', columns: ['node', 'mem'], rows: [['w-3', '86%']], levels: [[null, 'down']] }} />,
+  )
+  expect(container.querySelectorAll('td')[1]).toHaveClass('cell-hot')
 })
