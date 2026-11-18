@@ -142,6 +142,10 @@ body {
 .table th { text-align: left; color: var(--bl-muted); font-weight: 500; padding: 4px 12px 4px 0; border-bottom: 1px solid var(--bl-hair); }
 .table td { padding: 4px 12px 4px 0; white-space: nowrap; }
 .table-empty { color: var(--bl-muted); }
+/* Bands come from the server (Render/Thresholds.cs); a cell with no level stays plain. */
+.table td.cell-ok { color: var(--bl-moon); }
+.table td.cell-warn { color: var(--bl-amber); }
+.table td.cell-hot { color: var(--bl-red); }
 
 .bar-head { display: flex; justify-content: space-between; gap: 12px; }
 .bar-label { color: var(--bl-amber); }
