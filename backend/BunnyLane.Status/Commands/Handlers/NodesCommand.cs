@@ -16,7 +16,9 @@ public sealed class NodesCommand(IPrometheus prom, TimeProvider? clock = null) :
         var load = map.ByInstance(await Prom.QueryAsync(Promql.NodeLoad, ct));
         var up = map.ByInstance(await Prom.QueryAsync(Promql.NodeUptime, ct));
 
-        var rows = map.Nodes.OrderBy(n => n.IsControlPlane ? 0 : 1).ThenBy(n => n.Alias, StringComparer.Ordinal).Select(n => new[]
+        var ordered = map.Nodes.OrderBy(n => n.IsControlPlane ? 0 : 1).ThenBy(n => n.Alias, StringComparer.Ordinal).ToArray();
+
+        var rows = ordered.Select(n => new[]
         {
             n.Alias,
             n.IsControlPlane ? "control plane" : "worker",
@@ -26,6 +28,17 @@ public sealed class NodesCommand(IPrometheus prom, TimeProvider? clock = null) :
             Format.Duration(TimeSpan.FromSeconds(up.GetValueOrDefault(n.Alias))),
         }).ToArray();
 
-        return CommandResult.Ok(Name, new TableBlock(["node", "role", "cpu", "memory", "load", "up"], rows));
+        // Only cpu and memory are fractions of a capacity; load and uptime are not.
+        var levels = ordered.Select(n => new Level?[]
+        {
+            null,
+            null,
+            Thresholds.LevelFor(cpu.GetValueOrDefault(n.Alias)),
+            Thresholds.LevelFor(mem.GetValueOrDefault(n.Alias)),
+            null,
+            null,
+        }).ToArray();
+
+        return CommandResult.Ok(Name, new TableBlock(["node", "role", "cpu", "memory", "load", "up"], rows, levels));
     }
 }

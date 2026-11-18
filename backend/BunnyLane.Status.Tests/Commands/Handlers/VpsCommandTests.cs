@@ -82,4 +82,20 @@ public class VpsCommandTests
     [Fact]
     public async Task Vps_is_unknown_when_prometheus_is_down() =>
         (await Cmd(new FakePrometheus { Down = true }).RunAsync([], CancellationToken.None)).Status.Should().Be(ResultStatus.Unknown);
+
+    [Fact]
+    public async Task Vps_colours_the_bar_against_the_cap()
+    {
+        var bar = (await Cmd(Prom(2.0e12, 0.31e12)).RunAsync([], CancellationToken.None)).Blocks.OfType<BarBlock>().Single();
+
+        bar.Level.Should().Be(Level.Ok);     // 2.31 of 6 TB is 39%
+    }
+
+    [Fact]
+    public async Task Vps_over_eighty_percent_of_the_cap_is_down()
+    {
+        var bar = (await Cmd(Prom(5.0e12, 0.2e12)).RunAsync([], CancellationToken.None)).Blocks.OfType<BarBlock>().Single();
+
+        bar.Level.Should().Be(Level.Down);   // 5.2 of 6 TB is 87%
+    }
 }

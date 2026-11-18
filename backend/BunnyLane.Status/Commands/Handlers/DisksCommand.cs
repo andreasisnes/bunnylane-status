@@ -22,7 +22,7 @@ public sealed class DisksCommand(IPrometheus prom, TimeProvider? clock = null) :
             var cap = capacity.GetValueOrDefault(w.Alias);
             var used = usage.GetValueOrDefault(w.Alias);
             var fraction = cap > 0 ? used / cap : 0;
-            blocks.Add(new BarBlock(w.Alias, Math.Clamp(fraction, 0, 1), $"{Format.Bytes(used)} used · {Format.Bytes(Math.Max(0, cap - used))} free · {Format.Percent(fraction)}"));
+            blocks.Add(new BarBlock(w.Alias, Math.Clamp(fraction, 0, 1), $"{Format.Bytes(used)} used · {Format.Bytes(Math.Max(0, cap - used))} free · {Format.Percent(fraction)}", Thresholds.LevelFor(fraction)));
         }
 
         var volumes = robustness.Length;

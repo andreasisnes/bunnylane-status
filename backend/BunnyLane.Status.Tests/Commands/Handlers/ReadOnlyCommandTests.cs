@@ -166,4 +166,66 @@ public class ReadOnlyCommandTests
         table.Rows[0].Should().Contain("42%").And.Contain("61 °C");
         result.Blocks.OfType<ChartBlock>().Single().Title.Should().Be("gpu 24h");
     }
+
+    [Fact]
+    public async Task Nodes_colours_cpu_and_memory_and_nothing_else()
+    {
+        var table = (await new NodesCommand(FakePrometheus.Cluster()).RunAsync([], CancellationToken.None)).Blocks.OfType<TableBlock>().Single();
+
+        table.Levels.Should().NotBeNull();
+        table.Levels!.Should().HaveCount(table.Rows.Length);
+        table.Levels![0][2].Should().Be(Level.Ok);        // cp-1 cpu 10%
+        table.Levels![0][3].Should().Be(Level.Ok);        // cp-1 memory 50%
+        table.Levels![5][2].Should().Be(Level.Degraded);  // w-3 cpu 60% is the inclusive lower bound
+        table.Levels!.Should().OnlyContain(r => r[0] == null && r[1] == null && r[4] == null && r[5] == null,
+            "node, role, load and uptime are not fractions of a capacity");
+    }
+
+    [Fact]
+    public async Task A_node_over_eighty_percent_memory_is_down()
+    {
+        var p = FakePrometheus.Cluster().Set(Promql.NodeMem, FakePrometheus.I(0.86, ("instance", "192.168.30.111:9100")));
+
+        var table = (await new NodesCommand(p).RunAsync([], CancellationToken.None)).Blocks.OfType<TableBlock>().Single();
+
+        table.Levels![0][3].Should().Be(Level.Down);      // cp-1 memory 86%
+    }
+
+    [Fact]
+    public async Task Disks_colours_each_worker_bar_by_its_fill()
+    {
+        var bars = (await new DisksCommand(FakePrometheus.Cluster()).RunAsync([], CancellationToken.None)).Blocks.OfType<BarBlock>().ToArray();
+
+        bars.Should().NotBeEmpty();
+        bars.Should().OnlyContain(b => b.Level == Level.Ok, "200 of 512 GB is 39%");
+    }
+
+    [Fact]
+    public async Task Disks_over_eighty_percent_is_down()
+    {
+        var p = FakePrometheus.Cluster().Set(Promql.LonghornUsage, FakePrometheus.I(450e9, ("node", "k8s-01-w01")));
+
+        var bars = (await new DisksCommand(p).RunAsync([], CancellationToken.None)).Blocks.OfType<BarBlock>().ToArray();
+
+        bars.Single(b => b.Label == "w-1").Level.Should().Be(Level.Down);   // 450 of 512 GB is 88%
+    }
+
+    [Fact]
+    public async Task Nas_colours_its_bar()
+    {
+        var bar = (await new NasCommand(FakePrometheus.Cluster()).RunAsync([], CancellationToken.None)).Blocks.OfType<BarBlock>().Single();
+
+        bar.Level.Should().Be(Level.Ok);   // 6.8 of 37 TB is 18%
+    }
+
+    [Fact]
+    public async Task Gpu_colours_busy_and_vram_but_not_temperature()
+    {
+        var table = (await new GpuCommand(FakePrometheus.Cluster()).RunAsync([], CancellationToken.None)).Blocks.OfType<TableBlock>().Single();
+
+        table.Levels![0][1].Should().Be(Level.Ok);   // busy 42%
+        table.Levels![0][2].Should().Be(Level.Ok);   // vram 1 of 4 GB
+        table.Levels!.Should().OnlyContain(r => r[0] == null && r[3] == null,
+            "node and temperature are not fractions of a capacity");
+    }
 }

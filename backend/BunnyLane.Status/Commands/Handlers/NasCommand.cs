@@ -19,7 +19,7 @@ public sealed class NasCommand(IPrometheus prom, TimeProvider? clock = null) : M
         var growthPerDay = samples.Length >= 2 ? (samples[^1] - samples[0]) / (samples.Length - 1) : 0;
 
         return CommandResult.Ok(Name,
-            new BarBlock("media", Math.Clamp(fraction, 0, 1), $"{Format.Bytes(used)} of {Format.Bytes(total)} · {Format.Bytes(Math.Max(0, total - used))} free"),
+            new BarBlock("media", Math.Clamp(fraction, 0, 1), $"{Format.Bytes(used)} of {Format.Bytes(total)} · {Format.Bytes(Math.Max(0, total - used))} free", Thresholds.LevelFor(fraction)),
             new TextBlock($"growth {Format.Bytes(Math.Max(0, growthPerDay))}/day over the last week", Tone.Muted));
     }
 }
